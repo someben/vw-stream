@@ -1,3 +1,5 @@
+#!/usr/bin/env node
+
 var fs =      require('fs');
 var spawn =   require('child_process').spawn;
 var stream =  require('stream');
@@ -7,11 +9,10 @@ var split =   require('split');
 var temp =    require('temp').track();
 var winston = require('winston');
 
-
 var Logger = new (winston.Logger)({
     transports: [
-        new (winston.transports.Console)({ json: false, timestamp: true }),
-        new winston.transports.File({ filename: __dirname + '/debug.log', json: false })
+        new (winston.transports.Console)({ level: 'debug', json: false, timestamp: true }),
+        new winston.transports.File({  level: 'debug', filename: __dirname + '/debug.log', json: false })
     ],
     exceptionHandlers: [
         new (winston.transports.Console)({ json: false, timestamp: true }),
@@ -21,7 +22,7 @@ var Logger = new (winston.Logger)({
 });
 
 
-var VowpalWabbitStreamConstants = {
+var Constants = {
     DEFAULT_NAMESPACE_CHAR: 'a',
     NAMESPACE_CHARS: 'bcdefghijklmnopqrstuvwxyz',
     SAVE_MODEL_EXAMPLE: -1,
@@ -46,37 +47,37 @@ function VowpalWabbitStream(conf) {
     that._namespaceMap = {};  // namespace name => Vowpal Wabbit namespace character (i.e. a)
     that._getNamespaceCharacter = function(namespaceName) {
         if (! namespaceName) {
-            return VowpalWabbitStreamConstants.DEFAULT_NAMESPACE_CHAR;
+            return Constants.DEFAULT_NAMESPACE_CHAR;
         }
         if (namespaceName in that._namespaceMap) {
             return that._namespaceMap[namespaceName];
         }
-        var nsChar = VowpalWabbitStreamConstants.NAMESPACE_CHARS.charAt(Object.keys(that._namespaceMap).length);
+        var nsChar = Constants.NAMESPACE_CHARS.charAt(Object.keys(that._namespaceMap).length);
         if (! nsChar) {
             throw new Error("Too many namespaces");
         }
         return (that._namespaceMap[namespaceName] = nsChar);
     };
 
-    that._conf = conf;
-    that._conf.lossFunction |= VowpalWabbitStreamConstants.SQUARED_LOSS;
-    if (that._conf.lossFunction == VowpalWabbitStreamConstants.QUANTILE_LOSS) {
-        that._conf.quantileTau |= 0.5;
+    that._conf = (typeof(conf) == 'undefined') ? {} : conf;
+    that._conf.lossFunction = (typeof(that._conf.lossFunction) == 'undefined') ? Constants.SQUARED_LOSS : that._conf.lossFunction;
+    if (that._conf.lossFunction == Constants.QUANTILE_LOSS) {
+        that._conf.quantileTau = (typeof(that._conf.quantileTau) == 'undefined') ? 0.5 : that._conf.quantileTau;
     }
-    that._conf.numBits |= 18;
+    that._conf.numBits = (typeof(that._conf.numBits) == 'undefined') ? 18 : that._conf.numBits;
     
     that._numExamples = 0;
     that._lossSum = 0;
-    that._exMap = {};  // holds just those examples on which we are waiting a prediction
+    that._exMap = {};  // holds just those examples for which we are waiting a prediction
     
     var vwArgs = [
         "--save_resume",
         "--bit_precision", that._conf.numBits,
-        "--predictions", "stdout"  // Vowpal Wabbit supports STDOUT as the string (https://github.com/JohnLangford/vowpal_wabbit/blob/f7cf52ffb7d49bc689898739c59b308d33f5d8fb/vowpalwabbit/parse_args.cc#L691)
+        "--predictions", "stdout"  // Vowpal Wabbit supports "stdout" as a magic string (https://github.com/JohnLangford/vowpal_wabbit/blob/f7cf52ffb7d49bc689898739c59b308d33f5d8fb/vowpalwabbit/parse_args.cc#L691)
     ];
     
     vwArgs = vwArgs.concat(["--loss_function", that._conf.lossFunction]);
-    if (that._conf.lossFunction == VowpalWabbitStreamConstants.QUANTILE_LOSS) {
+    if (that._conf.lossFunction == Constants.QUANTILE_LOSS) {
         vwArgs = vwArgs.concat(["--quantile_tau", this._conf.quantileTau]);
     }
     
@@ -101,6 +102,7 @@ function VowpalWabbitStream(conf) {
         }
     }
     
+    Logger.debug("Launching VW child process:", vwArgs.join(' '));
     that._childProcess = spawn(that._conf.vwBinPath || 'vw', vwArgs);
 
     that._childProcess.stdout
@@ -203,17 +205,17 @@ util.inherits(VowpalWabbitStream, stream.Writable);
 
 VowpalWabbitStream.prototype.calcLoss = function(resp, pred) {
     switch (this._conf.lossFunction) {
-    case VowpalWabbitStreamConstants.SQUARED_LOSS:
-    case VowpalWabbitStreamConstants.CLASSIC_LOSS:
+    case Constants.SQUARED_LOSS:
+    case Constants.CLASSIC_LOSS:
         return (resp - pred) * (resp - pred);
         
-    case VowpalWabbitStreamConstants.HINGE_LOSS:
+    case Constants.HINGE_LOSS:
         return Math.max(0, 1 - (resp * pred));
         
-    case VowpalWabbitStreamConstants.LOGISTIC_LOSS:
+    case Constants.LOGISTIC_LOSS:
         return Math.log(1 + Math.exp(-resp * pred));
 
-    case VowpalWabbitStreamConstants.QUANTILE_LOSS:
+    case Constants.QUANTILE_LOSS:
         var resid = resp - pred;
         if (resid > 0) {
             return this._conf.quantileTau * resid;
@@ -243,3 +245,6 @@ VowpalWabbitStream.prototype.getModel = function(fn) {
         }
     });
 };
+
+exports.Constants = Constants;
+exports.VowpalWabbitStream = VowpalWabbitStream;

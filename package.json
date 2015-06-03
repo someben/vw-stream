@@ -5,7 +5,7 @@
   "keywords": ["Vowpal Wabbit", "Machine Learning", "Stochastic Gradient Descent", "Online Learning"],
   "main": "./main.js",
   "scripts": {
-    "test": "nodeunit main-test.js"
+    "test": "nodeunit test/"
   },
   "repository":{
   	"type": "git",
