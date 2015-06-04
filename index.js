@@ -119,29 +119,31 @@ function VowpalWabbitStream(conf) {
     that._childProcess.stdout
         .pipe(split())
         .on('data', function (line) {
-            Logger.debug("VW(STDOUT):", line);
             var re = line.match(/^(\S+)\s+exNum_(\S+)$/);
-            if (! re) return;
-
-            var predExNum = null;
-            try {
-                var pred = parseFloat(re[1]);
-                predExNum = parseInt(re[2], 10);
-                var ex = that._exMap[predExNum];
-                var exLoss = that.calcLoss(pred, ex.resp);
-    
-                var predObj = {
-                    pred: pred,
-                    loss: exLoss,
-                    ex: ex
-                };
-                that.emit('data', predObj);
-                that._lossSum += exLoss;
-            }
-            finally {
-                if (predExNum) {
-                    delete that._exMap[predExNum];
+            if (re) {
+                var predExNum = null;
+                try {
+                    var pred = parseFloat(re[1]);
+                    predExNum = parseInt(re[2], 10);
+                    var ex = that._exMap[predExNum];
+                    var exLoss = that.calcLoss(pred, ex.resp);
+                    that._lossSum += exLoss;
+        
+                    var predObj = {
+                        pred: pred,
+                        loss: exLoss,
+                        ex: ex
+                    };
+                    that.emit('data', predObj);
                 }
+                finally {
+                    if (predExNum) {
+                        delete that._exMap[predExNum];
+                    }
+                }
+            }
+            else {
+                Logger.debug("VW(STDOUT):", line);
             }
         });
         
@@ -262,5 +264,6 @@ VowpalWabbitStream.prototype.getModel = function(fn) {
     });
 };
 
+exports.Logger = Logger;
 exports.Constants = Constants;
 exports.VowpalWabbitStream = VowpalWabbitStream;
