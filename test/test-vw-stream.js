@@ -1,8 +1,8 @@
 var Logger = require('..').Logger;
 var VowpalWabbitStream = require('..').VowpalWabbitStream;
 
-Object.prototype.clone = function() {
-    return JSON.parse(JSON.stringify(this));
+function clone(obj) {
+    return JSON.parse(JSON.stringify(obj));
 };
 
 function assertEqualish(test, actual, expected, tol, message) {
@@ -58,7 +58,7 @@ var exDataRows = [
 function getTestExamples() {
     var exs = [];
     for (var i=0; i < exDataRows.length; i++) {
-        var exDataRow = exDataRows[i].clone();
+        var exDataRow = clone(exDataRows[i]);
         var ex = { resp: exDataRow.boxOffice };
         var exFeatMap = exDataRow;
         delete exFeatMap.boxOffice;
