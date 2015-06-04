@@ -82,8 +82,11 @@ function VowpalWabbitStream(conf) {
     that._lossSum = 0;
     that._exMap = {};  // holds just those examples for which we are waiting a prediction
     
+    that._finalModelPath = temp.path("vwStreamFinalModel", 'f-');
+    that._finalModelBuffer = null;
     var vwArgs = [
         "--bit_precision", that._conf.numBits,
+        "--final_regressor", that._finalModelPath,
         "--predictions", "stdout"  // Vowpal Wabbit supports "stdout" as a magic string (https://github.com/JohnLangford/vowpal_wabbit/blob/f7cf52ffb7d49bc689898739c59b308d33f5d8fb/vowpalwabbit/parse_args.cc#L691)
     ];
     
@@ -92,11 +95,12 @@ function VowpalWabbitStream(conf) {
         vwArgs = vwArgs.concat(["--quantile_tau", this._conf.quantileTau]);
     }
     
-    if (that._conf.model) {
-        var modelPath = temp.path("vwStreamInitModel", 'f-');
-        Logger.verbose("Writing initialization model to temporary file:", modelPath);
-        fs.writeFileSync(modelPath, that._conf.model);
-        vwArgs = vwArgs.concat(["--initial_regressor", modelPath]);
+    that._initModelPath = null;
+    if (that._conf.modelBuffer) {
+        that._initModelPath = temp.path("vwStreamInitModel", 'f-');
+        Logger.verbose("Writing initialization model to temporary file:", that._initModelPath);
+        fs.writeFileSync(that._initModelPath, that._conf.modelBuffer);
+        vwArgs = vwArgs.concat(["--initial_regressor", that._initModelPath]);
     }
     
     if (that._conf.l1) {
@@ -162,6 +166,13 @@ function VowpalWabbitStream(conf) {
         
     that._childProcess.on('exit', function(exitCode) {
         Logger.info("VW(exit):", exitCode);
+
+        if (that._initModelPath) {
+            fs.unlink(that._initModelPath);
+        }
+        that._finalModelBuffer = fs.readFileSync(that._finalModelPath);
+        fs.unlink(that._finalModelPath);
+
         that._isChildProcessAlive = false;
         that._checkEnd();
     });
@@ -263,7 +274,12 @@ VowpalWabbitStream.prototype.getAverageLoss = function() {
 };
 
 VowpalWabbitStream.prototype.getModel = function(fn) {
+    if (this._finalModelBuffer) {  // training in progress?
+        fn(this._finalModelBuffer);
+    }
+    
     var modelPath = temp.path("vwStreamModel", 'f-');
+    Logger.debug("Saving live model file:", modelPath);
     var vwEx = "save_" + modelPath;
     Logger.debug("VW(sendExample,save):", vwEx);
     this._childProcess.stdin.write(vwEx + "\n");
@@ -273,22 +289,15 @@ VowpalWabbitStream.prototype.getModel = function(fn) {
     var checkModelStart = new Date();
     var checkModel = function() {
         if (fs.existsSync(modelPath)) {
-            fs.readFile(modelPath, function(err, modelBuffer) {
-                if (err) {
-                    Logger.error("Could not read model temporary file:", modelPath);
-                }
-                else {
-                    Logger.verbose("Read model from temporary file:", modelPath);
-                    fs.unlink(modelPath);
-                    fn(modelBuffer);
-                }
-            });
+            var modelBuffer = fs.readFileSync(modelPath);
+            Logger.verbose("Read model from temporary file:", modelPath);
+            fs.unlink(modelPath);
+            fn(modelBuffer);
         }
         else {
             var checkModelNow = new Date();
             if ((checkModelNow.getTime() - checkModelStart.getTime()) > modelWriteTimeout) {
-                Logger.error("Vowpal Wabbit never wrote model temporary file:", modelPath);
-                fn(null);
+                throw new Error("Vowpal Wabbit never saved live model");
             }
             else {
                 setTimeout(checkModel, 100);
