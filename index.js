@@ -36,8 +36,7 @@ var Logger = (function() {
 var Constants = {
     DEFAULT_NAMESPACE_CHAR: 'a',
     NAMESPACE_CHARS: 'bcdefghijklmnopqrstuvwxyz',
-    SAVE_MODEL_EXAMPLE: -1,
-    
+
     SQUARED_LOSS: 'squared',
     CLASSIC_LOSS: 'classic',
     HINGE_LOSS: 'hinge',
@@ -84,7 +83,6 @@ function VowpalWabbitStream(conf) {
     that._exMap = {};  // holds just those examples for which we are waiting a prediction
     
     var vwArgs = [
-        "--save_resume",
         "--bit_precision", that._conf.numBits,
         "--predictions", "stdout"  // Vowpal Wabbit supports "stdout" as a magic string (https://github.com/JohnLangford/vowpal_wabbit/blob/f7cf52ffb7d49bc689898739c59b308d33f5d8fb/vowpalwabbit/parse_args.cc#L691)
     ];
@@ -96,6 +94,7 @@ function VowpalWabbitStream(conf) {
     
     if (that._conf.model) {
         var modelPath = temp.path("vwStreamInitModel", 'f-');
+        Logger.verbose("Writing initialization model to temporary file:", modelPath);
         fs.writeFileSync(modelPath, that._conf.model);
         vwArgs = vwArgs.concat(["--initial_regressor", modelPath]);
     }
@@ -141,7 +140,8 @@ function VowpalWabbitStream(conf) {
                 var predObj = {
                     pred: pred,
                     loss: exLoss,
-                    ex: ex
+                    ex: ex,
+                    exNum: predExNum
                 };
                 that.emit('data', predObj);
                 if (predExNum) {
@@ -222,8 +222,8 @@ VowpalWabbitStream.prototype._write = function(ex, encoding, fn) {
     }
     this._numExamples++;
     var vwEx = this._toVowpalWabbitFormat(ex, this._numExamples);
-    Logger.debug("VW(sendExample):", vwEx);
     this._exMap[this._numExamples] = ex;
+    Logger.debug("VW(sendExample):", vwEx);
     this._childProcess.stdin.write(vwEx + "\n");
     fn();
 };
@@ -264,20 +264,23 @@ VowpalWabbitStream.prototype.getAverageLoss = function() {
 
 VowpalWabbitStream.prototype.getModel = function(fn) {
     var modelPath = temp.path("vwStreamModel", 'f-');
-    this._childProcess.stdin.write("save_" + modelPath + "\n");
+    var vwEx = "save_" + modelPath;
+    Logger.debug("VW(sendExample,save):", vwEx);
+    this._childProcess.stdin.write(vwEx + "\n");
     
     // Vowpal Wabbit will write the model file "later", so poll the file system:
     var modelWriteTimeout = 2500;
     var checkModelStart = new Date();
     var checkModel = function() {
         if (fs.existsSync(modelPath)) {
-            fs.readFile(modelPath, 'utf8', function(err, modelData) {
+            fs.readFile(modelPath, function(err, modelBuffer) {
                 if (err) {
                     Logger.error("Could not read model temporary file:", modelPath);
                 }
                 else {
+                    Logger.verbose("Read model from temporary file:", modelPath);
                     fs.unlink(modelPath);
-                    fn(modelData);
+                    fn(modelBuffer);
                 }
             });
         }

@@ -23,25 +23,6 @@ function assertEqualish(test, actual, expected, tol, message) {
     }
 }
 
-exports.testOnePrediction = function(test) {
-    test.expect(1);
-    var vw = new VowpalWabbitStream();
-    
-    vw.on('data', function(predObj) {
-        test.ok(predObj.pred >= 0);
-        test.done();
-    });
-
-    vw.write({
-        resp: 1.0,
-        featMap: {
-            foo: 123,
-            bar: null
-        }
-    });
-    vw.end();
-};
-
 var exDataRows = [
     { boxOffice: 85.09999847, prodCost: 8.5, promCost: 5.099999905, bookSales: 4.699999809 },
     { boxOffice: 106.3000031, prodCost: 12.89999962, promCost: 5.800000191, bookSales: 8.800000191 },
@@ -73,6 +54,25 @@ function getTestExamples(namespaceName) {
     }
     return exs;
 }
+
+exports.testOnePrediction = function(test) {
+    test.expect(1);
+    var vw = new VowpalWabbitStream();
+    
+    vw.on('data', function(predObj) {
+        test.ok(predObj.pred >= 0);
+        test.done();
+    });
+
+    vw.write({
+        resp: 1.0,
+        featMap: {
+            foo: 123,
+            bar: null
+        }
+    });
+    vw.end();
+};
 
 exports.testPrediction = function(test) {
     test.expect(1);
@@ -132,11 +132,10 @@ exports.testPredictionPassesInteractions = function(test) {
 exports.testPredictionModel = function(test) {
     test.expect(1);
     var exs = getTestExamples();
-    var exMid =  exs[Math.floor(exs.length / 2)];
     var vw = new VowpalWabbitStream();
     
     vw.on('data', function(predObj) {
-        if (predObj.ex == exMid) {
+        if (predObj.exNum == Math.floor(exs.length / 2)) {
             vw.getModel(function(model) {
                 test.ok(model.length > 0);
                 test.done();
@@ -147,5 +146,39 @@ exports.testPredictionModel = function(test) {
 
     for (var i=0; i < exs.length; i++) {
         vw.write(exs[i]);
+    }
+};
+
+exports.testPredictionInitialModel = function(test) {
+    test.expect(1);
+    var exs = getTestExamples();
+    var vw1 = new VowpalWabbitStream();
+
+    vw1.on('data', function(predObj) {
+        if (predObj.exNum == (5 * exs.length)) {  // last example
+            vw1.getModel(function(model) {
+                vw1.end();
+
+                var vw2 = new VowpalWabbitStream({
+                    model: model
+                });
+
+                vw2.on('end', function() {
+                    assertEqualish(test, vw2.getAverageLoss(), 6702.62);
+                    test.done();
+                });
+
+                for (var i=0; i < exs.length; i++) {  // train w/ a sixth pass
+                    vw2.write(exs[i]);
+                }
+                vw2.end();
+            });
+        }
+    });
+
+    for (var passNum = 1; passNum <= 5; passNum++) {
+        for (var i=0; i < exs.length; i++) {
+            vw1.write(exs[i]);
+        }
     }
 };
