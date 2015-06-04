@@ -265,14 +265,34 @@ VowpalWabbitStream.prototype.getAverageLoss = function() {
 VowpalWabbitStream.prototype.getModel = function(fn) {
     var modelPath = temp.path("vwStreamModel", 'f-');
     this._childProcess.stdin.write("save_" + modelPath + "\n");
-    fs.readFile(modelPath, 'utf8', function(err, data) {
-        if (err) {
-            Logger.error("Could not read model temporary file", modelPath);
+    
+    // Vowpal Wabbit will write the model file "later", so poll the file system:
+    var modelWriteTimeout = 2500;
+    var checkModelStart = new Date();
+    var checkModel = function() {
+        if (fs.existsSync(modelPath)) {
+            fs.readFile(modelPath, 'utf8', function(err, modelData) {
+                if (err) {
+                    Logger.error("Could not read model temporary file:", modelPath);
+                }
+                else {
+                    fs.unlink(modelPath);
+                    fn(modelData);
+                }
+            });
         }
         else {
-            fn(data);
+            var checkModelNow = new Date();
+            if ((checkModelNow.getTime() - checkModelStart.getTime()) > modelWriteTimeout) {
+                Logger.error("Vowpal Wabbit never wrote model temporary file:", modelPath);
+                fn(null);
+            }
+            else {
+                setTimeout(checkModel, 100);
+            }
         }
-    });
+    };
+    checkModel();
 };
 
 exports.Logger = Logger;

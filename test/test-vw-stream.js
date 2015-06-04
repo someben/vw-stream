@@ -128,3 +128,24 @@ exports.testPredictionPassesInteractions = function(test) {
     }
     vw.end();
 };
+
+exports.testPredictionModel = function(test) {
+    test.expect(1);
+    var exs = getTestExamples();
+    var exMid =  exs[Math.floor(exs.length / 2)];
+    var vw = new VowpalWabbitStream();
+    
+    vw.on('data', function(predObj) {
+        if (predObj.ex == exMid) {
+            vw.getModel(function(model) {
+                test.ok(model.length > 0);
+                test.done();
+                vw.end();
+            });
+        }
+    });
+
+    for (var i=0; i < exs.length; i++) {
+        vw.write(exs[i]);
+    }
+};
