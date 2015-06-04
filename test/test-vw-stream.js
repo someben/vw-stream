@@ -1,20 +1,19 @@
 var VowpalWabbitStream = require('..').VowpalWabbitStream;
 
-exports.testSomething = function(test){
+exports.testPrediction = function(test) {
     var vw = new VowpalWabbitStream();
-    vw.on('data', function() {
-        console.log("Prediction callback:", arguments);
+    vw.on('data', function(predObj) {
+        test.ok(predObj.pred >= 0);
+        test.done();
     });
-    
-    vw.emit({
+
+    test.expect(1);
+    vw.write({
         resp: 1.0,
         featMap: {
             foo: 123,
             bar: null
         }
     });
-    
-    test.expect(1);
-    test.ok(true, "this assertion should pass");
-    test.done();
+    vw.end();
 };

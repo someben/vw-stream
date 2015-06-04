@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 
+require('datejs');
 var fs =      require('fs');
 var spawn =   require('child_process').spawn;
 var stream =  require('stream');
@@ -9,17 +10,27 @@ var split =   require('split');
 var temp =    require('temp').track();
 var winston = require('winston');
 
-var Logger = new (winston.Logger)({
-    transports: [
-        new (winston.transports.Console)({ level: 'debug', json: false, timestamp: true }),
-        new winston.transports.File({  level: 'debug', filename: __dirname + '/debug.log', json: false })
-    ],
-    exceptionHandlers: [
-        new (winston.transports.Console)({ json: false, timestamp: true }),
-        new winston.transports.File({ filename: __dirname + '/exceptions.log', json: false })
-    ],
-    exitOnError: false
-});
+var Logger = (function() {
+    var logLevel = 'debug';
+    var logFormatter = function(args) {
+        var date = new Date();
+        var timestamp = date.toString('yyyyMMdd@HH:mm:ss');
+        timestamp += '.' + String('000' + date.getMilliseconds()).slice(-3);
+        return "[" + timestamp + "] " + String('     ' + args.level.toUpperCase()).slice(-5) + " -- " + args.message;
+    }
+    
+    return new (winston.Logger)({
+        transports: [
+            new (winston.transports.Console)({ level: logLevel, formatter: logFormatter, json: false, timestamp: true }),
+            new (winston.transports.File)({ level: logLevel, formatter: logFormatter, json: false, timestamp: true, filename: __dirname + '/console.log' })
+        ],
+        exceptionHandlers: [
+            new (winston.transports.Console)({ formatter: logFormatter, json: false, timestamp: true }),
+            new (winston.transports.File)({ formatter: logFormatter, json: false, timestamp: true, filename: __dirname + '/console_exceptions.log' })
+        ],
+        exitOnError: false
+    });
+})();
 
 
 var Constants = {
@@ -36,8 +47,8 @@ var Constants = {
 
 
 function VowpalWabbitStream(conf) {
-    stream.Readable.call(this);
-    stream.Writable.call(this);
+    stream.Readable.call(this, { objectMode: true });
+    stream.Writable.call(this, { objectMode: true });
     var that = this;
     
     that._escapeVowpalWabbit = function(s) {
@@ -124,7 +135,7 @@ function VowpalWabbitStream(conf) {
                     loss: exLoss,
                     ex: ex
                 };
-                that.push(predObj);
+                that.emit('data', predObj);
                 that._lossSum += exLoss;
             }
             finally {
@@ -191,17 +202,22 @@ function VowpalWabbitStream(conf) {
         }
         return vwEx;
     };
-    
-    that.on('data', function(ex) {
-        that._numExamples++;
-        var vwEx = that._toVowpalWabbitFormat(ex, that._numExamples);
-        Logger.debug("VW(sendExample):", vwEx);
-        that._exMap[that._numExamples] = ex;
-        that._childProcess.stdin.write(vwEx + "\n");
-    });
 }
 util.inherits(VowpalWabbitStream, stream.Readable);
 util.inherits(VowpalWabbitStream, stream.Writable);
+
+VowpalWabbitStream.prototype._write = function(ex, encoding, fn) {
+    this._numExamples++;
+    var vwEx = this._toVowpalWabbitFormat(ex, this._numExamples);
+    Logger.debug("VW(sendExample):", vwEx);
+    this._exMap[this._numExamples] = ex;
+    this._childProcess.stdin.write(vwEx + "\n");
+    fn();
+};
+
+VowpalWabbitStream.prototype.end = function() {
+    this._childProcess.stdin.end();
+};
 
 VowpalWabbitStream.prototype.calcLoss = function(resp, pred) {
     switch (this._conf.lossFunction) {
