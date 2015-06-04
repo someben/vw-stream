@@ -58,15 +58,15 @@ function getTestExamples(namespaceName) {
 }
 
 exports.testVowpalWabbitFormat = function(test) {
-    test.expect(6);
+    test.expect(7);
     var ex = getTestExamples()[0];
     var vw = new VowpalWabbitStream();
     
-    test.equal(vw._toVowpalWabbitFormat(ex), "85.09999847 |a prodCost:8.5 promCost:5.099999905 bookSales:4.699999809");
-    test.equal(vw._toVowpalWabbitFormat(ex, 123), "85.09999847 'exNum_123 |a prodCost:8.5 promCost:5.099999905 bookSales:4.699999809");
+    test.equal(vw._toVowpalWabbitFormat(ex), "85.09999847 1 |a prodCost:8.5 promCost:5.099999905 bookSales:4.699999809");
+    test.equal(vw._toVowpalWabbitFormat(ex, 123), "85.09999847 1 'exNum_123 |a prodCost:8.5 promCost:5.099999905 bookSales:4.699999809");
 
     ex.featMap.prodCost = 1;  // default feature value in VW
-    test.equal(vw._toVowpalWabbitFormat(ex, 123), "85.09999847 'exNum_123 |a prodCost promCost:5.099999905 bookSales:4.699999809");
+    test.equal(vw._toVowpalWabbitFormat(ex, 123), "85.09999847 1 'exNum_123 |a prodCost promCost:5.099999905 bookSales:4.699999809");
     
     ex.imp = 2.5;
     test.equal(vw._toVowpalWabbitFormat(ex, 123), "85.09999847 2.5 'exNum_123 |a prodCost promCost:5.099999905 bookSales:4.699999809");
@@ -76,6 +76,9 @@ exports.testVowpalWabbitFormat = function(test) {
     
     ex.featMap['anotherNamespace'] = { foo: 123, bar: -2.34 };
     test.equal(vw._toVowpalWabbitFormat(ex, 123), "85.09999847 0 'exNum_123 |a prodCost promCost:5.099999905 bookSales:4.699999809 |b foo:123 bar:-2.34");
+
+    ex.initPred = 0.5;
+    test.equal(vw._toVowpalWabbitFormat(ex, 123), "85.09999847 0 0.5 'exNum_123 |a prodCost promCost:5.099999905 bookSales:4.699999809 |b foo:123 bar:-2.34");
 
     vw.end();
     test.done();
@@ -257,4 +260,31 @@ exports.testPredictionLiveModelRestart = function(test) {
             vw1.write(exs[i]);
         }
     }
+};
+
+exports.testReadmeExample = function(test) {
+    ///////////////////////////////////////////////////////
+    var vw = new VowpalWabbitStream({ learningRate: 10 });
+    vw.on('data', function(obj) {
+        console.log("Prediction & Average Loss:", obj.ex, obj.pred, vw.getAverageLoss());
+    });
+    var exs = [
+        { resp: 0, featMap: { price: 0.23, sqft: 0.25, age: 0.05, yr2006: 1.0 } },
+        { resp: 1, imp: 2.0, featMap: { price: 0.18, sqft: 0.15, age: 0.35, yr1976: 1.0 } },
+        { resp: 0, initPred: 0.5, featMap: { price: 0.53, sqft: 0.32, age: 0.87, yr1924: 1.0 } }
+    ];
+    for (var pass=0; pass < 25; pass++) {
+        for (var i=0; i < exs.length; i++) {
+            vw.write(exs[i]);
+        }
+    }
+    vw.end();
+    /*
+    [20150604@15:30:24.893] DEBUG -- VW(STDERR): finished run
+    [20150604@15:30:24.893] DEBUG -- VW(STDERR): number of examples per pass = 75
+    ...
+    [20150604@15:30:24.894] DEBUG -- VW(STDERR): average loss = 0.057188
+    */
+    ///////////////////////////////////////////////////////
+    test.done();
 };

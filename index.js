@@ -26,7 +26,7 @@ var Logger = (function() {
         var timestamp = date.toString('yyyyMMdd@HH:mm:ss');
         timestamp += '.' + String('000' + date.getMilliseconds()).slice(-3);
         return "[" + timestamp + "] " + String('     ' + args.level.toUpperCase()).slice(-5) + " -- " + args.message;
-    }
+    };
     
     return new (winston.Logger)({
         transports: [
@@ -112,6 +112,9 @@ function VowpalWabbitStream(conf) {
         vwArgs = vwArgs.concat(["--initial_regressor", that._initModelPath]);
     }
     
+    if (that._conf.learningRate) {
+        vwArgs = vwArgs.concat(["--learning_rate", that._conf.learningRate]);
+    }
     if (that._conf.l1) {
         vwArgs = vwArgs.concat(["--l1", that._conf.l1]);
     }
@@ -190,6 +193,12 @@ function VowpalWabbitStream(conf) {
         var vwEx = "" + (ex.resp || 0);
         if (typeof(ex.imp) != 'undefined') {
             vwEx += " " + ex.imp;
+        }
+        else {
+            vwEx += " 1";  // default importance
+        }
+        if (typeof(ex.initPred) != 'undefined') {
+            vwEx += " " + ex.initPred;
         }
         if (typeof(exNum) != 'undefined') {
             vwEx += " 'exNum_" + exNum;
