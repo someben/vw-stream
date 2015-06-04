@@ -1,6 +1,6 @@
 {
   "name": "vw-stream",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "Vowapal Wabbit Node.js Stream",
   "keywords": [
     "Vowpal Wabbit",
