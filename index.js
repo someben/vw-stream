@@ -114,6 +114,7 @@ function VowpalWabbitStream(conf) {
     }
     
     Logger.debug("Launching VW child process:", vwArgs.join(' '));
+    that._isChildProcessAlive = true;
     that._childProcess = spawn(that._conf.vwBinPath || 'vw', vwArgs);
 
     that._childProcess.stdout
@@ -121,26 +122,24 @@ function VowpalWabbitStream(conf) {
         .on('data', function (line) {
             var re = line.match(/^(\S+)\s+exNum_(\S+)$/);
             if (re) {
-                var predExNum = null;
-                try {
-                    var pred = parseFloat(re[1]);
-                    predExNum = parseInt(re[2], 10);
-                    var ex = that._exMap[predExNum];
-                    var exLoss = that.calcLoss(pred, ex.resp);
-                    that._lossSum += exLoss;
-        
-                    var predObj = {
-                        pred: pred,
-                        loss: exLoss,
-                        ex: ex
-                    };
-                    Logger.debug("Emitting prediction event:", predObj);
-                    that.emit('data', predObj);
+                var pred = parseFloat(re[1]);
+                var predExNum = parseInt(re[2], 10);
+                var ex = that._exMap[predExNum];
+                var exLoss = that.calcLoss(pred, ex.resp);
+                that._lossSum += exLoss;
+    
+                var predObj = {
+                    pred: pred,
+                    loss: exLoss,
+                    ex: ex
+                };
+                that.emit('data', predObj);
+                if (predExNum) {
+                    delete that._exMap[predExNum];
                 }
-                finally {
-                    if (predExNum) {
-                        delete that._exMap[predExNum];
-                    }
+                if ((! that._isChildProcessAlive) && (Object.keys(that._exMap).length == 0)) {
+                    Logger.debug("VW(end)");
+                    that.emit('end');
                 }
             }
             else {
@@ -156,7 +155,7 @@ function VowpalWabbitStream(conf) {
         
     that._childProcess.on('exit', function(exitCode) {
         Logger.info("VW(exit):", exitCode);
-        that.emit('end');
+        that._isChildProcessAlive = false;
     });
     
     that._toVowpalWabbitFormat = function(ex, exNum) {
@@ -210,11 +209,16 @@ util.inherits(VowpalWabbitStream, stream.Readable);
 util.inherits(VowpalWabbitStream, stream.Writable);
 
 VowpalWabbitStream.prototype._write = function(ex, encoding, fn) {
+    if (! this._isChildProcessAlive) {
+        throw new Error("Attempt to send example to closed VW process");
+    }
+    
     this._numExamples++;
     var vwEx = this._toVowpalWabbitFormat(ex, this._numExamples);
     Logger.debug("VW(sendExample):", vwEx);
     this._exMap[this._numExamples] = ex;
     this._childProcess.stdin.write(vwEx + "\n");
+    
     fn();
 };
 

@@ -14,6 +14,7 @@ function assertEqualish(test, actual, expected, tol, message) {
 exports.testOnePrediction = function(test) {
     test.expect(1);
     var vw = new VowpalWabbitStream();
+    
     vw.on('data', function(predObj) {
         test.ok(predObj.pred >= 0);
         test.done();
@@ -57,17 +58,15 @@ function getTestExamples() {
 
 exports.testPrediction = function(test) {
     test.expect(1);
-
     var exs = getTestExamples();
     var vw = new VowpalWabbitStream();
+    
     vw.on('data', function(predObj) {
-        var ex = predObj.ex;
         Logger.debug("Prediction vs. actual box-office:", predObj.pred, predObj.ex.resp, vw.getAverageLoss());
-        if (ex == exs[exs.length - 1]) {
-            Logger.debug("Last one!");
-            assertEqualish(test, vw.getAverageLoss(), 7906.92);
-            test.done();
-        }
+    });
+    vw.on('end', function() {
+        assertEqualish(test, vw.getAverageLoss(), 7906.92);
+        test.done();
     });
 
     for (var i=0; i < exs.length; i++) {
