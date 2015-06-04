@@ -55,6 +55,30 @@ function getTestExamples(namespaceName) {
     return exs;
 }
 
+exports.testVowpalWabbitFormat = function(test) {
+    test.expect(6);
+    var ex = getTestExamples()[0];
+    var vw = new VowpalWabbitStream();
+    
+    test.equal(vw._toVowpalWabbitFormat(ex), "85.09999847 |a prodCost:8.5 promCost:5.099999905 bookSales:4.699999809");
+    test.equal(vw._toVowpalWabbitFormat(ex, 123), "85.09999847 'exNum_123 |a prodCost:8.5 promCost:5.099999905 bookSales:4.699999809");
+
+    ex.featMap.prodCost = 1;  // default feature value in VW
+    test.equal(vw._toVowpalWabbitFormat(ex, 123), "85.09999847 'exNum_123 |a prodCost promCost:5.099999905 bookSales:4.699999809");
+    
+    ex.imp = 2.5;
+    test.equal(vw._toVowpalWabbitFormat(ex, 123), "85.09999847 2.5 'exNum_123 |a prodCost promCost:5.099999905 bookSales:4.699999809");
+    
+    ex.imp = 0;  // i.e. just testing, not training
+    test.equal(vw._toVowpalWabbitFormat(ex, 123), "85.09999847 0 'exNum_123 |a prodCost promCost:5.099999905 bookSales:4.699999809");
+    
+    ex.featMap['anotherNamespace'] = { foo: 123, bar: -2.34 };
+    test.equal(vw._toVowpalWabbitFormat(ex, 123), "85.09999847 0 'exNum_123 |a prodCost promCost:5.099999905 bookSales:4.699999809 |b foo:123 bar:-2.34");
+
+    vw.end();
+    test.done();
+};
+
 exports.testOnePrediction = function(test) {
     test.expect(1);
     var vw = new VowpalWabbitStream();

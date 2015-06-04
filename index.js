@@ -179,10 +179,12 @@ function VowpalWabbitStream(conf) {
     
     that._toVowpalWabbitFormat = function(ex, exNum) {
         var vwEx = "" + (ex.resp || 0);
-        if (ex.imp) {
+        if (typeof(ex.imp) != 'undefined') {
             vwEx += " " + ex.imp;
         }
-        vwEx += " 'exNum_" + exNum;
+        if (typeof(exNum) != 'undefined') {
+            vwEx += " 'exNum_" + exNum;
+        }
         
         var exFeatMap = ex.featMap || {};
         var nsFeatMapMap = {};
@@ -207,13 +209,18 @@ function VowpalWabbitStream(conf) {
             }
         }
         
-        for (var nsChar in nsFeatMapMap) {
+        var nsChars = Object.keys(nsFeatMapMap);
+        nsChars.sort();
+        for (var i=0; i < nsChars.length; i++) {
+            var nsChar = nsChars[i];
             var feats = [];
             for (var featKey in nsFeatMapMap[nsChar]) {
                 var featVal = nsFeatMapMap[nsChar][featKey];
                 var feat = that._escapeVowpalWabbit(featKey);
                 if (featVal) {
-                    feat += ":" + that._escapeVowpalWabbit(featVal);
+                    if (featVal != 1.0) {
+                        feat += ":" + that._escapeVowpalWabbit(featVal);
+                    }
                 }
                 feats.push(feat);
             }
