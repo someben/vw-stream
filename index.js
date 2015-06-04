@@ -199,7 +199,7 @@ function VowpalWabbitStream(conf) {
                 feats.push(feat);
             }
             if (feats.length > 0) {
-                vwEx += "|" + nsChar + " " + feats.join(" ");
+                vwEx += " |" + nsChar + " " + feats.join(" ");
             }
         }
         return vwEx;
