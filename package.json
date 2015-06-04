@@ -3,7 +3,7 @@
   "version": "0.0.1",
   "description": "Vowapal Wabbit Node.js Stream",
   "keywords": ["Vowpal Wabbit", "Machine Learning", "Stochastic Gradient Descent", "Online Learning"],
-  "main": "./main.js",
+  "main": "./index.js",
   "scripts": {
     "test": "nodeunit test/"
   },
@@ -14,3 +14,4 @@
   "author": "Ben Gimpert <ben@somethingmodern.com>",
   "license": "MIT"
 }
+
