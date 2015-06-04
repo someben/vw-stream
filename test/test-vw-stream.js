@@ -1,7 +1,19 @@
 var Logger = require('..').Logger;
 var VowpalWabbitStream = require('..').VowpalWabbitStream;
 
+Object.prototype.clone = function() {
+    return JSON.parse(JSON.stringify(this));
+};
+
 function assertEqualish(test, actual, expected, tol, message) {
+    if (((expected == null) && (actual != null))          ||
+        (isNaN(expected) && (! isNaN(actual)))            ||
+        ((! isFinite(expected)) && (actual != expected))  ||
+        (! isFinite(actual))) {
+        test.fail(actual, expected, message, '==');
+        return;
+    }
+
     var checkedTol = (typeof(tol) == 'undefined') ? 0.01 : tol;
     if (Math.abs(actual - expected) > checkedTol) {
         test.fail(actual, expected, message, '==');
@@ -46,7 +58,7 @@ var exDataRows = [
 function getTestExamples() {
     var exs = [];
     for (var i=0; i < exDataRows.length; i++) {
-        var exDataRow = exDataRows[i];
+        var exDataRow = exDataRows[i].clone();
         var ex = { resp: exDataRow.boxOffice };
         var exFeatMap = exDataRow;
         delete exFeatMap.boxOffice;
@@ -61,9 +73,6 @@ exports.testPrediction = function(test) {
     var exs = getTestExamples();
     var vw = new VowpalWabbitStream();
     
-    vw.on('data', function(predObj) {
-        Logger.debug("Prediction vs. actual box-office:", predObj.pred, predObj.ex.resp, vw.getAverageLoss());
-    });
     vw.on('end', function() {
         assertEqualish(test, vw.getAverageLoss(), 7906.92);
         test.done();
@@ -71,6 +80,24 @@ exports.testPrediction = function(test) {
 
     for (var i=0; i < exs.length; i++) {
         vw.write(exs[i]);
+    }
+    vw.end();
+};
+
+exports.testPredictionPasses = function(test) {
+    test.expect(1);
+    var exs = getTestExamples();
+    var vw = new VowpalWabbitStream();
+    
+    vw.on('end', function() {
+        assertEqualish(test, vw.getAverageLoss(), 7312.20);  // loss has decreased with more training passes
+        test.done();
+    });
+
+    for (var passNum = 1; passNum <= 5; passNum++) {
+        for (var i=0; i < exs.length; i++) {
+            vw.write(exs[i]);
+        }
     }
     vw.end();
 };

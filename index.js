@@ -117,6 +117,13 @@ function VowpalWabbitStream(conf) {
     that._isChildProcessAlive = true;
     that._childProcess = spawn(that._conf.vwBinPath || 'vw', vwArgs);
 
+    that._checkEnd = function() {
+        if ((! that._isChildProcessAlive) && (Object.keys(that._exMap).length == 0)) {
+            Logger.debug("VW(end)");
+            that.emit('end');
+        }
+    };
+    
     that._childProcess.stdout
         .pipe(split())
         .on('data', function (line) {
@@ -137,10 +144,7 @@ function VowpalWabbitStream(conf) {
                 if (predExNum) {
                     delete that._exMap[predExNum];
                 }
-                if ((! that._isChildProcessAlive) && (Object.keys(that._exMap).length == 0)) {
-                    Logger.debug("VW(end)");
-                    that.emit('end');
-                }
+                that._checkEnd();
             }
             else {
                 Logger.debug("VW(STDOUT):", line);
@@ -156,6 +160,7 @@ function VowpalWabbitStream(conf) {
     that._childProcess.on('exit', function(exitCode) {
         Logger.info("VW(exit):", exitCode);
         that._isChildProcessAlive = false;
+        that._checkEnd();
     });
     
     that._toVowpalWabbitFormat = function(ex, exNum) {
@@ -212,13 +217,11 @@ VowpalWabbitStream.prototype._write = function(ex, encoding, fn) {
     if (! this._isChildProcessAlive) {
         throw new Error("Attempt to send example to closed VW process");
     }
-    
     this._numExamples++;
     var vwEx = this._toVowpalWabbitFormat(ex, this._numExamples);
     Logger.debug("VW(sendExample):", vwEx);
     this._exMap[this._numExamples] = ex;
     this._childProcess.stdin.write(vwEx + "\n");
-    
     fn();
 };
 
