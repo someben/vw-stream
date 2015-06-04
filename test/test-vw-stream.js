@@ -42,24 +42,36 @@ var exDataRows = [
     { boxOffice: 89.30000305, prodCost: 10.19999981, promCost: 4.5, bookSales: 7.900000095 }
 ];
 
-exports.testPrediction = function(test) {
-    test.expect(1);
-    var vw = new VowpalWabbitStream();
-    vw.on('data', function(predObj) {
-        Logger.debug("Prediction vs. actual box-office:", predObj.pred, predObj.ex.resp, vw.getAverageLoss());
-    });
-    vw.on('end', function() {
-        assertEqualish(test, vw.getAverageLoss(), 7906.92);
-        test.done();
-    });
-
+function getTestExamples() {
+    var exs = [];
     for (var i=0; i < exDataRows.length; i++) {
         var exDataRow = exDataRows[i];
         var ex = { resp: exDataRow.boxOffice };
         var exFeatMap = exDataRow;
         delete exFeatMap.boxOffice;
         ex.featMap = exFeatMap;
-        vw.write(ex);
+        exs.push(ex);
+    }
+    return exs;
+}
+
+exports.testPrediction = function(test) {
+    test.expect(1);
+
+    var exs = getTestExamples();
+    var vw = new VowpalWabbitStream();
+    vw.on('data', function(predObj) {
+        var ex = predObj.ex;
+        Logger.debug("Prediction vs. actual box-office:", predObj.pred, predObj.ex.resp, vw.getAverageLoss());
+        if (ex == exs[exs.length - 1]) {
+            Logger.debug("Last one!");
+            assertEqualish(test, vw.getAverageLoss(), 7906.92);
+            test.done();
+        }
+    });
+
+    for (var i=0; i < exs.length; i++) {
+        vw.write(exs[i]);
     }
     vw.end();
 };

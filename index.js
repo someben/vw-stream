@@ -134,6 +134,7 @@ function VowpalWabbitStream(conf) {
                         loss: exLoss,
                         ex: ex
                     };
+                    Logger.debug("Emitting prediction event:", predObj);
                     that.emit('data', predObj);
                 }
                 finally {
