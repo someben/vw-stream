@@ -1,3 +1,5 @@
+#!/usr/bin/env node
+
 var Logger = require('..').Logger;
 var VowpalWabbitStream = require('..').VowpalWabbitStream;
 

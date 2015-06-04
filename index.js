@@ -1,5 +1,14 @@
 #!/usr/bin/env node
 
+/*
+ * vw-stream
+ * https://github.com/someben/vw-stream
+ *
+ * Copyright (c) 2015  Ben Gimpert <ben@somethingmodern.com>
+ * Licensed under the MIT license.
+ * https://github.com/someben/vw-stream/blob/master/LICENSE
+ */
+
 require('datejs');
 var fs =      require('fs');
 var spawn =   require('child_process').spawn;
