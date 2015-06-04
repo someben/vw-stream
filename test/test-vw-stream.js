@@ -55,14 +55,20 @@ var exDataRows = [
     { boxOffice: 89.30000305, prodCost: 10.19999981, promCost: 4.5, bookSales: 7.900000095 }
 ];
 
-function getTestExamples() {
+function getTestExamples(namespaceName) {
     var exs = [];
     for (var i=0; i < exDataRows.length; i++) {
         var exDataRow = clone(exDataRows[i]);
         var ex = { resp: exDataRow.boxOffice };
         var exFeatMap = exDataRow;
         delete exFeatMap.boxOffice;
-        ex.featMap = exFeatMap;
+        if (typeof(namespaceName) == 'undefined') {
+            ex.featMap = exFeatMap;
+        }
+        else {
+            ex.featMap = {};
+            ex.featMap[namespaceName] = exFeatMap;
+        }
         exs.push(ex);
     }
     return exs;
@@ -91,6 +97,27 @@ exports.testPredictionPasses = function(test) {
     
     vw.on('end', function() {
         assertEqualish(test, vw.getAverageLoss(), 7312.20);  // loss has decreased with more training passes
+        test.done();
+    });
+
+    for (var passNum = 1; passNum <= 5; passNum++) {
+        for (var i=0; i < exs.length; i++) {
+            vw.write(exs[i]);
+        }
+    }
+    vw.end();
+};
+
+exports.testPredictionPassesInteractions = function(test) {
+    test.expect(1);
+    var ns = "testNamespace";
+    var exs = getTestExamples(ns);
+    var vw = new VowpalWabbitStream({
+        quadraticFeatures: [[ns, ns]]
+    });
+    
+    vw.on('end', function() {
+        assertEqualish(test, vw.getAverageLoss(), 6932.21);  // loss has decreased with interaction terms
         test.done();
     });
 

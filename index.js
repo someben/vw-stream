@@ -57,7 +57,7 @@ function VowpalWabbitStream(conf) {
     
     that._namespaceMap = {};  // namespace name => Vowpal Wabbit namespace character (i.e. a)
     that._getNamespaceCharacter = function(namespaceName) {
-        if (! namespaceName) {
+        if (typeof(namespaceName) == 'undefined') {
             return Constants.DEFAULT_NAMESPACE_CHAR;
         }
         if (namespaceName in that._namespaceMap) {
@@ -67,7 +67,9 @@ function VowpalWabbitStream(conf) {
         if (! nsChar) {
             throw new Error("Too many namespaces");
         }
-        return (that._namespaceMap[namespaceName] = nsChar);
+        Logger.debug("Mapping '" + namespaceName + "' namespace to '" + nsChar + "' character.");
+        that._namespaceMap[namespaceName] = nsChar;
+        return nsChar;
     };
 
     that._conf = (typeof(conf) == 'undefined') ? {} : conf;
@@ -106,7 +108,8 @@ function VowpalWabbitStream(conf) {
     }
     
     if (that._conf.quadraticFeatures) {
-        for (var quadPair in that._conf.quadraticFeatures) {
+        for (var i=0; i < that._conf.quadraticFeatures.length; i++) {
+            var quadPair = that._conf.quadraticFeatures[i];
             var nsChar1 = that._getNamespaceCharacter(quadPair[0]);
             var nsChar2 = that._getNamespaceCharacter(quadPair[1]);
             vwArgs = vwArgs.concat(["--quadratic", nsChar1 + nsChar2]);
@@ -173,7 +176,7 @@ function VowpalWabbitStream(conf) {
         var exFeatMap = ex.featMap || {};
         var nsFeatMapMap = {};
         for (var featKey in exFeatMap) {
-            if (typeof exFeatMap[featKey] === 'object') {
+            if (exFeatMap[featKey] && (typeof exFeatMap[featKey] === 'object')) {
                 // namespace
                 var namespaceChar = that._getNamespaceCharacter(featKey);
                 if (! (namespaceChar in nsFeatMapMap)) {
