@@ -19,7 +19,10 @@ var split =   require('split');
 var temp =    require('temp').track();
 var winston = require('winston');
 
-var Logger = (function() {
+function getLogger(dir) {
+    if (typeof(dir) == 'undefined') {
+        dir = __dirname;  // this file's directory
+    }
     var logLevel = 'debug';
     var logFormatter = function(args) {
         var date = new Date();
@@ -31,16 +34,17 @@ var Logger = (function() {
     return new (winston.Logger)({
         transports: [
             new (winston.transports.Console)({ level: logLevel, formatter: logFormatter, json: false, timestamp: true }),
-            new (winston.transports.File)({ level: logLevel, formatter: logFormatter, json: false, timestamp: true, filename: __dirname + '/console.log' })
+            new (winston.transports.File)({ level: logLevel, formatter: logFormatter, json: false, timestamp: true, filename: dir + '/console.log' })
         ],
         exceptionHandlers: [
             new (winston.transports.Console)({ formatter: logFormatter, json: false, timestamp: true }),
-            new (winston.transports.File)({ formatter: logFormatter, json: false, timestamp: true, filename: __dirname + '/console_exceptions.log' })
+            new (winston.transports.File)({ formatter: logFormatter, json: false, timestamp: true, filename: dir + '/console_exceptions.log' })
         ],
         exitOnError: false
     });
-})();
+};
 
+var Logger = getLogger();
 
 var Constants = {
     DEFAULT_NAMESPACE_CHAR: 'a',
@@ -112,6 +116,9 @@ function VowpalWabbitStream(conf) {
         vwArgs = vwArgs.concat(["--initial_regressor", that._initModelPath]);
     }
     
+    if (that._conf.randomSeed) {
+        vwArgs = vwArgs.concat(["--random_seed", that._conf.randomSeed]);
+    }
     if (that._conf.learningRate) {
         vwArgs = vwArgs.concat(["--learning_rate", that._conf.learningRate]);
     }
@@ -332,6 +339,8 @@ VowpalWabbitStream.prototype.getModel = function(fn) {
     checkModel();
 };
 
+exports.getLogger = getLogger;
 exports.Logger = Logger;
 exports.Constants = Constants;
 exports.VowpalWabbitStream = VowpalWabbitStream;
+
