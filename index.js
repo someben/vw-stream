@@ -308,6 +308,7 @@ VowpalWabbitStream.prototype.getAverageLoss = function() {
 VowpalWabbitStream.prototype.getModel = function(fn) {
     if (this._finalModelBuffer) {  // training in progress?
         fn(this._finalModelBuffer);
+        return;
     }
     
     var modelPath = temp.path("vwStreamModel", 'f-');
