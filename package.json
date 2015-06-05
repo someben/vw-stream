@@ -1,7 +1,7 @@
 {
   "name": "vw-stream",
-  "version": "0.0.4",
-  "description": "Vowapal Wabbit Node.js Stream",
+  "version": "0.0.4.1",
+  "description": "Vowpal Wabbit Node.js Stream",
   "keywords": [
     "Vowpal Wabbit",
     "Machine Learning",
