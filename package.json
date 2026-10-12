@@ -1,12 +1,14 @@
 {
   "name": "vw-stream",
-  "version": "0.0.7",
-  "description": "Vowpal Wabbit Node.js Stream",
+  "version": "0.1.0",
+  "description": "Online machine learning with Vowpal Wabbit as a Node.js stream",
   "keywords": [
-    "Vowpal Wabbit",
-    "Machine Learning",
-    "Stochastic Gradient Descent",
-    "Online Learning"
+    "vowpal wabbit",
+    "machine learning",
+    "online learning",
+    "stochastic gradient descent",
+    "streams",
+    "quantile regression"
   ],
   "main": "./index.js",
   "scripts": {
@@ -14,7 +16,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git://github.com/someben/vw-stream"
+    "url": "git+https://github.com/someben/vw-stream.git"
   },
   "author": "Ben Gimpert <ben@somethingmodern.com>",
   "license": "MIT",
@@ -25,11 +27,16 @@
     "test": "test"
   },
   "dependencies": {
-    "nodeunit": "~0.9.1",
     "datejs": "~1.0.0-rc3",
     "split": "~1.0.0",
     "temp": "~0.8.1",
     "winston": "~1.0.0"
   },
-  "devDependencies": {}
+  "devDependencies": {
+    "nodeunit": "~0.9.1"
+  },
+  "homepage": "https://github.com/someben/vw-stream",
+  "engines": {
+    "node": ">=18"
+  }
 }

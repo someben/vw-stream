@@ -100,7 +100,7 @@ function VowpalWabbitStream(conf) {
     var vwArgs = [
         "--bit_precision", that._conf.numBits,
         "--final_regressor", that._finalModelPath,
-        "--predictions", "stdout"  // Vowpal Wabbit supports "stdout" as a magic string (https://github.com/JohnLangford/vowpal_wabbit/blob/f7cf52ffb7d49bc689898739c59b308d33f5d8fb/vowpalwabbit/parse_args.cc#L691)
+        "--predictions", "stdout"  // Vowpal Wabbit supports "stdout" as a magic string (https://github.com/VowpalWabbit/vowpal_wabbit/blob/f7cf52ffb7d49bc689898739c59b308d33f5d8fb/vowpalwabbit/parse_args.cc#L691)
     ];
     
     vwArgs = vwArgs.concat(["--loss_function", that._conf.lossFunction]);
@@ -157,7 +157,7 @@ function VowpalWabbitStream(conf) {
                 var pred = parseFloat(re[1]);
                 var predExNum = parseInt(re[2], 10);
                 var ex = that._exMap[predExNum];
-                var exLoss = that.calcLoss(pred, ex.resp);
+                var exLoss = that.calcLoss(ex.resp, pred);
                 that._lossSum += exLoss;
     
                 var predObj = {
@@ -187,10 +187,10 @@ function VowpalWabbitStream(conf) {
         Logger.info("VW(exit):", exitCode);
 
         if (that._initModelPath) {
-            fs.unlink(that._initModelPath);
+            fs.unlinkSync(that._initModelPath);
         }
         that._finalModelBuffer = fs.readFileSync(that._finalModelPath);
-        fs.unlink(that._finalModelPath);
+        fs.unlinkSync(that._finalModelPath);
 
         that._isChildProcessAlive = false;
         that._checkEnd();
@@ -324,7 +324,7 @@ VowpalWabbitStream.prototype.getModel = function(fn) {
         if (fs.existsSync(modelPath)) {
             var modelBuffer = fs.readFileSync(modelPath);
             Logger.verbose("Read model from temporary file:", modelPath);
-            fs.unlink(modelPath);
+            fs.unlinkSync(modelPath);
             fn(modelBuffer);
         }
         else {
