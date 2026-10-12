@@ -241,11 +241,12 @@ function VowpalWabbitStream(conf) {
             var feats = [];
             for (var featKey in nsFeatMapMap[nsChar]) {
                 var featVal = nsFeatMapMap[nsChar][featKey];
+                if (! featVal) {
+                    continue;  // zero-valued (or missing) feature, which VW would otherwise read as a bare feature with value 1
+                }
                 var feat = that._escapeVowpalWabbit(featKey);
-                if (featVal) {
-                    if (featVal != 1.0) {
-                        feat += ":" + that._escapeVowpalWabbit(featVal);
-                    }
+                if (featVal != 1.0) {
+                    feat += ":" + that._escapeVowpalWabbit(featVal);
                 }
                 feats.push(feat);
             }

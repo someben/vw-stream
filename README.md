@@ -40,7 +40,7 @@ Each example is a plain object:
 - `resp`: the label.
 - `imp`: importance weight (default 1).
 - `initPred`: base prediction to learn a residual on (optional).
-- `featMap`: features as `name: value`. A value of 1 is written as a bare feature. A nested object is a named namespace: `{ book: { bid: 0.2, ask: 0.3 }, trades: { n: 12 } }`.
+- `featMap`: features as `name: value`. A value of 1 is written as a bare feature; a value of 0 (or `null`) leaves the feature out. A nested object is a named namespace: `{ book: { bid: 0.2, ask: 0.3 }, trades: { n: 12 } }`.
 
 Each `data` event is `{ pred, loss, ex, exNum }`. The prediction is made before VW learns from that example, so the running average loss is an honest progressive-validation (out-of-sample) estimate.
 
@@ -65,6 +65,10 @@ Each `data` event is `{ pred, loss, ex, exNum }`. The prediction is made before 
 ## How it works
 
 The stream spawns `vw` as a child process with `--predictions stdout`, writes each example in VW text format tagged `exNum_<n>`, and matches predictions back to examples by tag. Namespace names are mapped onto VW's single-character namespaces (`a` is the default; `b` to `z` are assigned in order of first use, so at most 25 named namespaces).
+
+## Changes in 0.1.1 (2026)
+
+- Zero-valued features are left out. Before, a feature with value 0 was written without a value, which VW reads as 1.
 
 ## Changes in 0.1.0 (2026)
 

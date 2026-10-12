@@ -58,7 +58,7 @@ function getTestExamples(namespaceName) {
 }
 
 exports.testVowpalWabbitFormat = function(test) {
-    test.expect(7);
+    test.expect(9);
     var ex = getTestExamples()[0];
     var vw = new VowpalWabbitStream();
     
@@ -79,6 +79,12 @@ exports.testVowpalWabbitFormat = function(test) {
 
     ex.initPred = 0.5;
     test.equal(vw._toVowpalWabbitFormat(ex, 123), "85.09999847 0 0.5 'exNum_123 |a prodCost promCost:5.099999905 bookSales:4.699999809 |b foo:123 bar:-2.34");
+
+    ex.featMap.promCost = 0;  // zero-valued features are left out, not written bare (which VW reads as 1)
+    test.equal(vw._toVowpalWabbitFormat(ex, 123), "85.09999847 0 0.5 'exNum_123 |a prodCost bookSales:4.699999809 |b foo:123 bar:-2.34");
+
+    ex.featMap.anotherNamespace = { foo: 0, bar: null };  // namespace with no non-zero features is dropped
+    test.equal(vw._toVowpalWabbitFormat(ex, 123), "85.09999847 0 0.5 'exNum_123 |a prodCost bookSales:4.699999809");
 
     vw.end();
     test.done();

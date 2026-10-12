@@ -1,6 +1,6 @@
 {
   "name": "vw-stream",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Online machine learning with Vowpal Wabbit as a Node.js stream",
   "keywords": [
     "vowpal wabbit",
